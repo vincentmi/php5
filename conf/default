@@ -12,6 +12,14 @@ server {
     location = /50x.html {
         root /usr/share/nginx/html;
     }
+
+    location ~ \.(ini|sh|md)$ {
+        deny all;
+    }
+
+    location ~ Dockerfile$ {
+        deny all;
+    }
     
     location ~ \.php$ {
         root /var/www/public;
