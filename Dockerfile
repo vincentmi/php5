@@ -4,9 +4,12 @@ LABEL maintainer="Vincent Mi<miwenshu@gmail.com>"
 
 RUN mkdir /var/www /var/www/public /var/backup /var/log/nginx && echo "<?php phpinfo();?>"   > /var/www/public/index.php && chmod -R 0777 /var/www
 
-VOLUME /var/www/
+VOLUME /var/www/public
 VOLUME /var/log/nginx
 VOLUME /var/backup
+# VOLUME /var/www/public/user_uploads
+# VOLUME /var/www/public/temp
+# VOLUME /var/www/public/cache
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -18,74 +21,12 @@ php5-apcu
 
 RUN /etc/init.d/php5-fpm stop && /etc/init.d/nginx stop
 
-RUN { echo '[global]'; \
-    echo 'pid = /var/run/php5-fpm.pid';\
-    echo 'error_log = /var/log/nginx/php5-fpm.log';\
-    echo 'daemonize = no';\
-    echo '[www]';\
-    echo 'user = www-data';\
-    echo 'group = www-data';\
-    echo 'listen = /var/run/php5-fpm.sock';\
-    echo 'listen.owner = www-data';\
-    echo 'listen.group = www-data';\
-    echo 'pm = dynamic';\
-    echo 'pm.max_children = 5';\
-    echo 'pm.start_servers = 2';\
-    echo 'pm.min_spare_servers = 1';\
-    echo 'pm.max_spare_servers = 3';\
-    echo ';pm.status_path = /status';\
-    echo 'chdir = /';\
-    echo ';include=/etc/php5/fpm/pool.d/*.conf';\
-} > /etc/php5/fpm/php-fpm.conf
+COPY  conf/default /etc/nginx/sites-enabled/
 
-RUN { echo 'server {'; \
-    echo '    listen 80 default_server;'; \
-    echo '    listen [::]:80 default_server ipv6only=on;';\
-    echo '    root /var/www/public;'; \
-    echo '    index index.php index.html index.htm;';\
-    echo '    server_name localhost;';\
-    echo '    location / {';\
-    echo '    #    try_files $uri $uri/ =404;'; \
-    echo '        try_files $uri $uri/ /index.php?$query_string;'; \
-    echo '    }';\
-    echo '    error_page 404 /404.html;'; \
-    echo '    location = /50x.html {';\
-    echo '        root /usr/share/nginx/html;';\
-    echo '    }';\
-    echo '    location ~ \.php$ {'; \
-    echo '        root /var/www/public;'; \
-    echo '        fastcgi_pass unix:/var/run/php5-fpm.sock;'; \
-    echo '        fastcgi_index index.php;'; \
-    echo '        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;';\
-    echo '        include fastcgi_params;'; \
-    echo '    }'; \
-    echo '    location ~ /\.ht {'; \
-    echo '        deny all;'; \
-    echo '    }'; \
-    echo '}'; \
-    } > /etc/nginx/sites-enabled/default
+COPY  conf/fpm.conf  conf/nginx.conf   /etc/supervisor/conf.d/
 
-RUN { echo '[program:php5-fpm]'; \
-    echo 'command=/usr/sbin/php5-fpm'; \
-    echo 'stdout_logfile=/var/log/nginx/php5-fpm.out';\
-    echo 'autostart=true';\
-    echo 'autorestart=true';\
-    echo 'startsecs=5';\
-    echo 'priority=1';\
-    echo 'stopasgroup=true';\
-    echo 'killasgroup=true'; \
-    } > /etc/supervisor/conf.d/php5-fpm.conf
-
-RUN { echo '[program:nginx]'; \
-    echo 'command=/usr/sbin/nginx -g "daemon off;"'; \
-    echo 'stdout_logfile=/var/log/nginx/nginx.out';\
-    echo 'autostart=true';\
-    echo 'autorestart=true';\
-    echo 'startsecs=5';\
-    echo 'priority=1';\
-    echo 'stopasgroup=true';\
-    echo 'killasgroup=true';\
-    } >  /etc/supervisor/conf.d/nginx.conf
+COPY  conf/php-fpm.conf /etc/php5/fpm/
+COPY  conf/www.conf /etc/php5/fpm/pool.d/
 
 EXPOSE 80
 
